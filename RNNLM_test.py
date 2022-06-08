@@ -35,8 +35,8 @@ def test(input_tensor, label_tensor, model):
         outputs, states = model(inputs, states)
         
         targets = targets.cpu().numpy().tolist()
-
-        outputs = torch.argmax(outputs, dim = 2).cpu().numpy().tolist()
+        #outputs = torch.argmax(outputs, dim = 2).cpu().numpy().tolist()
+        outputs = outputs.detach().cpu().numpy().tolist()
         preds += outputs
         labels += targets
 
@@ -47,6 +47,7 @@ def test(input_tensor, label_tensor, model):
                 new_labels.append(labels[i][j])
 
 if __name__ == "__main__":
+    pretrained_weight = 0.7
     num_epochs = 200
     batch_size = 16
     learning_rate = 0.01
@@ -57,8 +58,8 @@ if __name__ == "__main__":
     random.seed(100)
     
     parser = argparse.ArgumentParser(formatter_class=RawTextHelpFormatter)
-    parser.add_argument('-d', "--dataset", type=str, help="which dataset?", default='IEMOCAP')
-    parser.add_argument('-m', "--modality", type=str, help="which pre-trained modality?", default='audio')
+    parser.add_argument('-d', "--dataset", type=str, help="which dataset?", default='NNIME')
+    parser.add_argument('-m', "--modality", type=str, help="which pre-trained modality?", default='text_audio')
     args = parser.parse_args()
     print(args)
     
@@ -82,14 +83,6 @@ if __name__ == "__main__":
     for utt in pretrained_output:
         pretrained_output[utt] = softmax(pretrained_output[utt])
     
-    '''
-    pretrained_output = {}
-    for utt in emo_all:
-        if emo_all[utt] in ['ang', 'hap', 'neu', 'sad', 'Anger', 'Happiness', 'Neutral', 'Sadness']:
-            prob_distribution = np.zeros(4)
-            prob_distribution[emo2num[emo_all[utt]]] = 1.0
-            pretrained_output[utt] = prob_distribution
-    '''
     # ensure pretrained model performance
     labels = []
     predicts = []
@@ -214,23 +207,29 @@ if __name__ == "__main__":
     print('RNNLM UAR:', round(recall_score(new_labels, new_preds, average='macro') * 100, 2))
     print('RNNLM ACC:', round(accuracy_score(new_labels, new_preds) * 100, 2))
     '''
-    pred_dict = {}
+    
+    pred_prob_dict, pred_dict = {}, {}
     for i in range(len(new_preds)):
-        pred_dict[utts_order_list[i]] = new_preds[i]
+        pred_prob_dict[utts_order_list[i]] = softmax(np.array(new_preds[i], dtype=np.float64))
     
     for dia in dialogs_edit:
         for utt in dialogs_edit[dia]:
-            pred_dict[utt] = pretrained_output[utt].argmax()
+            pred_prob_dict[utt] = pretrained_output[utt]
             break
+    for utt in pred_prob_dict:
+        pred_prob_dict[utt] = (1-pretrained_weight) * pred_prob_dict[utt] + pretrained_weight * pretrained_output[utt]
+        pred_dict[utt] = pred_prob_dict[utt].argmax()
+    
     joblib.dump(pred_dict, './model/' + args.dataset + '/preds_4.pkl')
+    joblib.dump(pred_prob_dict, './model/' + args.dataset + '/RNNLM_pred_prob_dict_' + args.modality + '.pkl')
     
     preds, labels = [], []
     for utt in pred_dict:
         preds.append(pred_dict[utt])
         labels.append(emo2num[emo_all[utt]])
     print(len(labels), len(preds))
-    print('RNNLM UAR:', round(recall_score(labels, preds, average='macro') * 100, 2))
-    print('RNNLM ACC:', round(accuracy_score(labels, preds) * 100, 2))
-            
+    print('RNNLM UAR:', round(recall_score(labels, preds, average='macro') * 100, 2), '%')
+    print('RNNLM ACC:', round(accuracy_score(labels, preds) * 100, 2), '%')
+    
 
     

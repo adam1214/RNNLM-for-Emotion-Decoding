@@ -151,7 +151,22 @@ if __name__ == "__main__":
         dia_name_list.append(dialog_name)
     
     model = RNNLM(embed_size=4, hidden_size=hidden_size, num_layers=num_layers).to(device)
-    loss_function = nn.CrossEntropyLoss(ignore_index=-1)
+    if args.dataset == 'NNIME':
+        ang_cnt, hap_cnt, neu_cnt, sad_cnt = 0, 0, 0, 0
+        for utt in emo_all:
+            if utt[4] != args.model_num:
+                if emo_all[utt] == 'Anger':
+                    ang_cnt += 1
+                elif emo_all[utt] == 'Happiness':
+                    hap_cnt += 1
+                elif emo_all[utt] == 'Neutral':
+                    neu_cnt += 1
+                elif emo_all[utt] == 'Sadness':
+                    sad_cnt += 1
+        max_cnt = max([ang_cnt, hap_cnt, neu_cnt, sad_cnt])
+        loss_function = nn.CrossEntropyLoss(ignore_index=-1, weight=torch.FloatTensor([max_cnt/ang_cnt, max_cnt/hap_cnt, max_cnt/neu_cnt, max_cnt/sad_cnt]).to(device))
+    else:
+        loss_function = nn.CrossEntropyLoss(ignore_index=-1)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     
     best_epoch, best_val_uar = 0, 0
