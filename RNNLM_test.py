@@ -58,8 +58,9 @@ if __name__ == "__main__":
     random.seed(100)
     
     parser = argparse.ArgumentParser(formatter_class=RawTextHelpFormatter)
-    parser.add_argument('-d', "--dataset", type=str, help="which dataset?", default='NNIME')
+    parser.add_argument('-d', "--dataset", type=str, help="which dataset?", default='IEMOCAP')
     parser.add_argument('-m', "--modality", type=str, help="which pre-trained modality?", default='text_audio')
+    parser.add_argument('-p', "--pretrained_model", type=str, help="which pre-trained model?", default='IAAN')
     args = parser.parse_args()
     print(args)
     
@@ -69,10 +70,48 @@ if __name__ == "__main__":
         emo_all = joblib.load('./data/IEMOCAP/emo_all_iemocap.pkl')
         dialogs_edit = joblib.load('./data/IEMOCAP/dialog_rearrange_4emo_iemocap.pkl')
         pretrained_output = joblib.load('./data/IEMOCAP/DAG_outputs_4_all_fold_' + args.modality + '.pkl')
+        if args.pretrained_model == 'IAAN':
+            pretrained_output = {}
+            output_fold1 = joblib.load('./data/IEMOCAP/iaan_utt_logits_outputs_fold1.pkl')
+            output_fold2 = joblib.load('./data/IEMOCAP/iaan_utt_logits_outputs_fold2.pkl')
+            output_fold3 = joblib.load('./data/IEMOCAP/iaan_utt_logits_outputs_fold3.pkl')
+            output_fold4 = joblib.load('./data/IEMOCAP/iaan_utt_logits_outputs_fold4.pkl')
+            output_fold5 = joblib.load('./data/IEMOCAP/iaan_utt_logits_outputs_fold5.pkl')
+            
+            for utt in output_fold1:
+                if utt[4] == '1':
+                    pretrained_output[utt] = output_fold1[utt]
+                elif utt[4] == '2':
+                    pretrained_output[utt] = output_fold2[utt]
+                elif utt[4] == '3':
+                    pretrained_output[utt] = output_fold3[utt]
+                elif utt[4] == '4':
+                    pretrained_output[utt] = output_fold4[utt]
+                elif utt[4] == '5':
+                    pretrained_output[utt] = output_fold5[utt]
     else:
         emo_all = joblib.load('./data/NNIME/emo_all.pkl')
         dialogs_edit = joblib.load('./data/NNIME/dialogs_4emo.pkl')
         pretrained_output = joblib.load('./data/NNIME/DAG_outputs_4_all_fold_interspeech_' + args.modality + '.pkl')
+        if args.pretrained_model == 'IAAN':
+            pretrained_output = {}
+            output_fold1 = joblib.load('./data/NNIME/iaan_utt_logits_outputs_fold1.pkl')
+            output_fold2 = joblib.load('./data/NNIME/iaan_utt_logits_outputs_fold2.pkl')
+            output_fold3 = joblib.load('./data/NNIME/iaan_utt_logits_outputs_fold3.pkl')
+            output_fold4 = joblib.load('./data/NNIME/iaan_utt_logits_outputs_fold4.pkl')
+            output_fold5 = joblib.load('./data/NNIME/iaan_utt_logits_outputs_fold5.pkl')
+            
+            for utt in output_fold1:
+                if utt[4] == '1':
+                    pretrained_output[utt] = output_fold1[utt]
+                elif utt[4] == '2':
+                    pretrained_output[utt] = output_fold2[utt]
+                elif utt[4] == '3':
+                    pretrained_output[utt] = output_fold3[utt]
+                elif utt[4] == '4':
+                    pretrained_output[utt] = output_fold4[utt]
+                elif utt[4] == '5':
+                    pretrained_output[utt] = output_fold5[utt]
         
     START_TAG = "<START>"
     STOP_TAG = "<STOP>"
