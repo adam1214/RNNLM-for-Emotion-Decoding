@@ -46,8 +46,74 @@ def test(input_tensor, label_tensor, model):
                 new_preds.append(preds[i][j])
                 new_labels.append(labels[i][j])
 
+def search_pretrained_alpha_by_val_set(pretrained_alpha_list):
+    global new_preds, new_labels
+    # search pretrained alpha by val set
+    print('==========')
+    print('search pretrained alpha by val set')
+    for model_num in [1,2,3,4,5]:
+        best_pretrained_alpha = 0
+        best_uar = 0
+        for pretrained_alpha in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
+            new_preds, new_labels = [], []
+            pred_prob_dict_ses, pred_dict_ses = {}, {}
+            if model_num_val_map[model_num] == '1': # model_num_val_map = {1:'5', 2:'4', 3:'2', 4:'1', 5: '3'}
+                test(test_input_ses01_tensor, test_label_ses01_tensor, model_4)
+                
+                for i in range(len(new_preds)):
+                    pred_prob_dict_ses[utts_order_list_ses01[i]] = softmax(np.array(new_preds[i], dtype=np.float64))
+                
+            elif model_num_val_map[model_num] == '2':
+                test(test_input_ses02_tensor, test_label_ses02_tensor, model_3)
+                
+                for i in range(len(new_preds)):
+                    pred_prob_dict_ses[utts_order_list_ses02[i]] = softmax(np.array(new_preds[i], dtype=np.float64))
+                    
+            elif model_num_val_map[model_num] == '3':
+                test(test_input_ses03_tensor, test_label_ses03_tensor, model_5)
+                
+                for i in range(len(new_preds)):
+                    pred_prob_dict_ses[utts_order_list_ses03[i]] = softmax(np.array(new_preds[i], dtype=np.float64))
+                    
+            elif model_num_val_map[model_num] == '4':
+                test(test_input_ses04_tensor, test_label_ses04_tensor, model_2)
+                
+                for i in range(len(new_preds)):
+                    pred_prob_dict_ses[utts_order_list_ses04[i]] = softmax(np.array(new_preds[i], dtype=np.float64))
+                    
+            elif model_num_val_map[model_num] == '5':
+                test(test_input_ses05_tensor, test_label_ses05_tensor, model_1)
+                
+                for i in range(len(new_preds)):
+                    pred_prob_dict_ses[utts_order_list_ses05[i]] = softmax(np.array(new_preds[i], dtype=np.float64))
+            
+            for dia in dialogs_edit:
+                for utt in dialogs_edit[dia]: 
+                    if utt[4] == model_num_val_map[model_num]:
+                        pred_prob_dict_ses[utt] = pretrained_output[utt]
+                        break
+            
+            for utt in pred_prob_dict_ses:
+                pred_prob_dict_ses[utt] = (1-pretrained_alpha) * pred_prob_dict_ses[utt] + pretrained_alpha * pretrained_output[utt]
+                pred_dict_ses[utt] = pred_prob_dict_ses[utt].argmax()
+            
+            preds, labels = [], []
+            for utt in pred_dict_ses:
+                preds.append(pred_dict_ses[utt])
+                labels.append(emo2num[emo_all[utt]])
+            #print(len(labels), len(preds))
+            #print('RNNLM UAR:', round(recall_score(labels, preds, average='macro') * 100, 2), '%')
+            #print('RNNLM ACC:', round(accuracy_score(labels, preds) * 100, 2), '%')
+            
+            if best_pretrained_alpha == 0 or recall_score(labels, preds, average='macro') > best_uar:
+                best_uar = recall_score(labels, preds, average='macro')
+                best_pretrained_alpha = pretrained_alpha
+        #print('best_pretrained_alpha:', best_pretrained_alpha)
+        pretrained_alpha_list.append(best_pretrained_alpha)
+    print('pretrained_alpha_list:', pretrained_alpha_list)
+    print('==========')
 if __name__ == "__main__":
-    pretrained_weight = 0.7
+    #pretrained_alpha = 0.7
     num_epochs = 200
     batch_size = 16
     learning_rate = 0.01
@@ -58,8 +124,8 @@ if __name__ == "__main__":
     random.seed(100)
     
     parser = argparse.ArgumentParser(formatter_class=RawTextHelpFormatter)
-    parser.add_argument('-d', "--dataset", type=str, help="which dataset?", default='IEMOCAP')
-    parser.add_argument('-m', "--modality", type=str, help="which pre-trained modality?", default='text_audio')
+    parser.add_argument('-d', "--dataset", type=str, help="which dataset?", default='NNIME')
+    parser.add_argument('-m', "--modality", type=str, help="which pre-trained modality?", default='audio')
     parser.add_argument('-p', "--pretrained_model", type=str, help="which pre-trained model?", default='IAAN')
     args = parser.parse_args()
     print(args)
@@ -137,6 +203,8 @@ if __name__ == "__main__":
     test_input_ses01, test_label_ses01, test_input_ses02, test_label_ses02, test_input_ses03, test_label_ses03 = [], [], [], [], [], []
     test_input_ses04, test_label_ses04, test_input_ses05, test_label_ses05 = [], [], [], []
     utts_order_list = []
+    utts_order_list_ses01, utts_order_list_ses02, utts_order_list_ses03, utts_order_list_ses04, utts_order_list_ses05 = [], [], [], [], []
+    
     for dialog_name in dialogs_edit:
         for i, utt in enumerate(dialogs_edit[dialog_name]):
             if dialog_name[4] == '1':
@@ -149,6 +217,7 @@ if __name__ == "__main__":
                     test_input_ses01[-1].append(torch.FloatTensor(pretrained_output[utt].tolist()))
                     test_label_ses01[-1].append(emo2num[emo_all[dialogs_edit[dialog_name][i+1]]])
                     utts_order_list.append(dialogs_edit[dialog_name][i+1])
+                    utts_order_list_ses01.append(dialogs_edit[dialog_name][i+1])
                     
             elif dialog_name[4] == '2':
                 if i == 0:
@@ -160,6 +229,7 @@ if __name__ == "__main__":
                     test_input_ses02[-1].append(torch.FloatTensor(pretrained_output[utt].tolist()))
                     test_label_ses02[-1].append(emo2num[emo_all[dialogs_edit[dialog_name][i+1]]])
                     utts_order_list.append(dialogs_edit[dialog_name][i+1])
+                    utts_order_list_ses02.append(dialogs_edit[dialog_name][i+1])
                     
             elif dialog_name[4] == '3':
                 if i == 0:
@@ -171,6 +241,7 @@ if __name__ == "__main__":
                     test_input_ses03[-1].append(torch.FloatTensor(pretrained_output[utt].tolist()))
                     test_label_ses03[-1].append(emo2num[emo_all[dialogs_edit[dialog_name][i+1]]])
                     utts_order_list.append(dialogs_edit[dialog_name][i+1])
+                    utts_order_list_ses03.append(dialogs_edit[dialog_name][i+1])
                     
             elif dialog_name[4] == '4':
                 if i == 0:
@@ -182,6 +253,7 @@ if __name__ == "__main__":
                     test_input_ses04[-1].append(torch.FloatTensor(pretrained_output[utt].tolist()))
                     test_label_ses04[-1].append(emo2num[emo_all[dialogs_edit[dialog_name][i+1]]])
                     utts_order_list.append(dialogs_edit[dialog_name][i+1])
+                    utts_order_list_ses04.append(dialogs_edit[dialog_name][i+1])
                     
             elif dialog_name[4] == '5':
                 if i == 0:
@@ -193,6 +265,7 @@ if __name__ == "__main__":
                     test_input_ses05[-1].append(torch.FloatTensor(pretrained_output[utt].tolist()))
                     test_label_ses05[-1].append(emo2num[emo_all[dialogs_edit[dialog_name][i+1]]])
                     utts_order_list.append(dialogs_edit[dialog_name][i+1])
+                    utts_order_list_ses05.append(dialogs_edit[dialog_name][i+1])
 
     
     test_label_ses01_tensor = pad_sequence([torch.FloatTensor(seq) for seq in test_label_ses01], batch_first = True, padding_value = -1)
@@ -242,10 +315,6 @@ if __name__ == "__main__":
     test(test_input_ses03_tensor, test_label_ses03_tensor, model_3)
     test(test_input_ses04_tensor, test_label_ses04_tensor, model_4)
     test(test_input_ses05_tensor, test_label_ses05_tensor, model_5)
-    '''
-    print('RNNLM UAR:', round(recall_score(new_labels, new_preds, average='macro') * 100, 2))
-    print('RNNLM ACC:', round(accuracy_score(new_labels, new_preds) * 100, 2))
-    '''
     
     pred_prob_dict, pred_dict = {}, {}
     for i in range(len(new_preds)):
@@ -255,8 +324,13 @@ if __name__ == "__main__":
         for utt in dialogs_edit[dia]:
             pred_prob_dict[utt] = pretrained_output[utt]
             break
+        
+    new_preds, new_labels = [], []
+    pretrained_alpha_list = []
+    search_pretrained_alpha_by_val_set(pretrained_alpha_list)
+    #pretrained_alpha_list = [0.7, 0.7, 0.7, 0.7, 0.7]
     for utt in pred_prob_dict:
-        pred_prob_dict[utt] = (1-pretrained_weight) * pred_prob_dict[utt] + pretrained_weight * pretrained_output[utt]
+        pred_prob_dict[utt] = (1-pretrained_alpha_list[int(utt[4])-1]) * pred_prob_dict[utt] + pretrained_alpha_list[int(utt[4])-1] * pretrained_output[utt]
         pred_dict[utt] = pred_prob_dict[utt].argmax()
     
     joblib.dump(pred_dict, './model/' + args.dataset + '/preds_4.pkl')

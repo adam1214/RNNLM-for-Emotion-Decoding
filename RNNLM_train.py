@@ -174,6 +174,7 @@ if __name__ == "__main__":
         # shuffle the conversation order
         random.shuffle(dia_name_list)
         train_input, train_label, val_input, val_label = [], [], [], []
+        utts_order_list = []
         for dialog_name in dia_name_list:
             for i, utt in enumerate(dialogs_edit[dialog_name]):
                 if dialog_name[4] != model_num_val_map[args.model_num] and dialog_name[4] != str(args.model_num): # train set
@@ -193,6 +194,7 @@ if __name__ == "__main__":
                     if i >= 0 and i <= (len(dialogs_edit[dialog_name])-2):
                         val_input[-1].append(torch.FloatTensor(pretrained_output[utt].tolist()))
                         val_label[-1].append(emo2num[emo_all[dialogs_edit[dialog_name][i+1]]])
+                        utts_order_list.append(dialogs_edit[dialog_name][i+1])
         
         train_label_tensor = pad_sequence([torch.FloatTensor(seq) for seq in train_label], batch_first = True, padding_value = -1)
         train_input_tensor = pad_sequence([torch.stack(seq) for seq in train_input], batch_first = True)
@@ -206,6 +208,4 @@ if __name__ == "__main__":
         print('EPOCH', epoch, 'Train loss', avg_loss_train, 'Train UAR', round(train_uar, 2), 'Val loss', avg_loss_val, 'Val UAR', round(val_uar, 2))
         print('The best epoch so far: ', best_epoch, 'The best Val UAR so far:', round(best_val_uar,2))
     print('Train finish! The best epoch: ', best_epoch)
-            
-
     
